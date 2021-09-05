@@ -1,0 +1,24 @@
+[package]
+authors = ["Greg Zanchelli <zanchelli.greg@gmail.com>"]
+edition = "2018"
+name = "raya"
+version = "0.1.0"
+
+[[bin]]
+doc = false
+name = "raya"
+path = "src/main.rs"
+
+[dependencies]
+hound = "3.4.0"
+nalgebra = "0.28.0"
+num-traits = "0.2"
+pbr = "1.0.1"
+rand = "0.8.4"
+rayon = "1.0.3"
+roots = "0.0.7"
+rustfft = "6.0.1"
+scoped_threadpool = "0.1.*"
+serde =  { version = "1.0.126", features = ["derive"] }
+serde_json = "1.0.64"
+gltf = { version = "0.16", features = ["extras"] }
