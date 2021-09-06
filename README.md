@@ -29,7 +29,7 @@ raya -m bench/auditorium/raya/auditorium.gltf -o bench/auditorium/raya/auditoriu
 - __Receiver Radius__: 0.25m
 - __Max Order__: 50
 - __Ray Count__: 10000
-- __Triangles__: 280
+- __Triangles__: 56
 ##### CRAM
 <table>
   <thead>
@@ -70,6 +70,55 @@ raya -m bench/auditorium/raya/auditorium.gltf -o bench/auditorium/raya/auditoriu
       <td>12.56s</td>
       <td>0.17s</td>
       <td>12.73s</td>
+    </tr>
+  </tbody>
+</table>
+
+### Shoebox
+- __Receiver Radius__: 0.2m
+- __Max Order__: 50
+- __Ray Count__: 10000
+- __Triangles__: 12
+##### CRAM
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Impulse Response</th>
+      <th>Raytracing</th>
+      <th>IR Calculation</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="/bench/shoebox/cram/shoebox.json">shoebox.json</a></td>
+      <td><a href="/bench/shoebox/cram/shoebox.wav">shoebox.wav</a></td>
+      <td>22.36s</td>
+      <td>0.33s</td>
+      <td>22.69s</td>
+    </tr>
+  </tbody>
+</table>
+
+##### Raya
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Impulse Response</th>
+      <th>Raytracing</th>
+      <th>IR Calculation</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><a href="/bench/shoebox/raya/shoebox.gltf">shoebox.gltf</a></td>
+      <td><a href="/bench/shoebox/raya/shoebox.wav">shoebox.wav</a></td>
+      <td>4.33s</td>
+      <td>0.09s</td>
+      <td>4.42s</td>
     </tr>
   </tbody>
 </table>
