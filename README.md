@@ -20,7 +20,7 @@ This will build `raya` and output the binary to `target/release/raya`.
 
 ```txt
 USAGE:
-    raya [FLAGS] --model <FILE> --output <FILE>
+    raya [FLAGS] [OPTIONS] --model <FILE> --output <FILE>
 
 FLAGS:
     -h, --help             Prints help information
@@ -28,8 +28,10 @@ FLAGS:
     -V, --version          Prints version information
 
 OPTIONS:
-    -m, --model <FILE>     The 3d model file used (.gltf)
-    -o, --output <FILE>    The file path for the calculated impulse response (.wav)
+    -r, --max-order <max-order>    Overrides the max order defined in model
+    -m, --model <FILE>             The 3d model file used (.gltf)
+    -o, --output <FILE>            The file path for the calculated impulse response (.wav)
+    -c, --ray-count <ray-count>    Overrides the ray count defined in model
 ```
 
 ### Examples
