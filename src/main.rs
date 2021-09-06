@@ -5,6 +5,7 @@ use clap::{Arg, App};
 fn main() {
     let matches = App::new("Raya")
         .about("Acoustic raytracer written in rust")
+        .version("0.1.1")
         .arg(Arg::with_name("model")
             .short("m")
             .long("model")
