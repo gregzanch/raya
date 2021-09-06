@@ -2,6 +2,27 @@
 
 Raya is an acoustic raytracer written in rust.
 
+## Usage
+
+```txt
+USAGE:
+    raya --model <FILE> --output <FILE>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -m, --model <FILE>     The 3d model file used (.gltf)
+    -o, --output <FILE>    The file path for the calculated impulse response (.wav)
+```
+
+### Examples
+
+```sh
+raya -m bench/auditorium/raya/auditorium.gltf -o bench/auditorium/raya/auditorium.wav
+```
+
 ## Benchmarks
 
 ### Auditorium
