@@ -13,15 +13,21 @@ pub struct NonRefIntersection {
     pub v_value: f32,
 }
 
-
 impl fmt::Display for NonRefIntersection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pt = ({:>5.1}, {:>5.1}, {:>5.1})", self.point.coords.x, self.point.coords.y, self.point.coords.z)?;
+        write!(
+            f,
+            "pt = ({:>5.1}, {:>5.1}, {:>5.1})",
+            self.point.coords.x, self.point.coords.y, self.point.coords.z
+        )?;
         write!(f, " | ")?;
-        Ok(write!(f, "nm = ({:>5.1}, {:>5.1}, {:>5.1})", self.normal.x, self.normal.y, self.normal.z)?)
+        Ok(write!(
+            f,
+            "nm = ({:>5.1}, {:>5.1}, {:>5.1})",
+            self.normal.x, self.normal.y, self.normal.z
+        )?)
     }
 }
-
 
 impl PartialEq for NonRefIntersection {
     fn eq(&self, other: &NonRefIntersection) -> bool {
@@ -34,7 +40,6 @@ impl PartialOrd for NonRefIntersection {
         self.t_value.partial_cmp(&other.t_value)
     }
 }
-
 
 #[derive(Debug, Clone, Copy)]
 pub struct Intersection<'a> {

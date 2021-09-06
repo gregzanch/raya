@@ -1,8 +1,6 @@
 use crate::geometry::{Primitive, Ray};
-use crate::scene::{Intersection, AcousticMaterial};
-use nalgebra::{Affine3, Matrix4, Vector3, distance_squared, vector};
-
-
+use crate::scene::{AcousticMaterial, Intersection};
+use nalgebra::{distance_squared, vector, Affine3, Matrix4, Vector3};
 
 #[derive(Debug, Clone)]
 pub struct SceneNode {
@@ -35,7 +33,7 @@ impl SceneNode {
             for child in self.children.iter() {
                 let res = child.find_child_by_id(id);
                 if res.is_some() {
-                    return Some(&res.unwrap())
+                    return Some(&res.unwrap());
                 }
             }
         }
@@ -46,16 +44,13 @@ impl SceneNode {
         self.children.push(child);
     }
 
-
     pub fn scale(&mut self, x: f32, y: f32, z: f32) {
         self.apply_transform(Matrix4::new_nonuniform_scaling(&vector![x, y, z]));
     }
 
-
     pub fn translate(&mut self, x: f32, y: f32, z: f32) {
         self.apply_transform(Matrix4::new_translation(&vector![x, y, z]));
     }
-
 
     pub fn rotate(&mut self, axis: &str, angle: f32) {
         let axis = match axis {
@@ -69,7 +64,6 @@ impl SceneNode {
         };
         self.apply_transform(Matrix4::from_axis_angle(&axis, angle.to_radians()));
     }
-
 
     fn apply_transform(&mut self, t: Matrix4<f32>) {
         let ta: Affine3<f32> = Affine3::from_matrix_unchecked(t);

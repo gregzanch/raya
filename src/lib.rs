@@ -1,7 +1,7 @@
 pub mod geometry;
 pub mod scene;
-pub mod utils;
 pub mod signals;
+pub mod utils;
 
 mod acoustic_raytrace;
 pub use crate::acoustic_raytrace::AcousticRaytracer;

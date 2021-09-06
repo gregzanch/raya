@@ -6,7 +6,7 @@ pub use self::mesh::Mesh;
 pub use self::primitive::Primitive;
 pub use self::ray::Ray;
 
-use nalgebra::{Vector3, vector};
+use nalgebra::{vector, Vector3};
 use roots::Roots;
 
 const CUBE_EPS: f32 = 0.0001;

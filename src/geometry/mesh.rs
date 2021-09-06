@@ -1,5 +1,5 @@
-use nalgebra::Vector3;
 use nalgebra::vector;
+use nalgebra::Vector3;
 use std::error::Error;
 use std::f32;
 use std::fs::File;

@@ -46,11 +46,7 @@ fn close(a: f32, b: f32) -> bool {
 }
 
 fn cube_collides(ray: &Ray, t_value: &mut f32, normal: &mut Vector3<f32>) -> bool {
-    let roots = aabb_collision(
-        ray,
-        &vector![0.0, 0.0, 0.0],
-        &vector![1.0, 1.0, 1.0],
-    );
+    let roots = aabb_collision(ray, &vector![0.0, 0.0, 0.0], &vector![1.0, 1.0, 1.0]);
 
     *t_value = match roots {
         Roots::Two([t1, _]) => t1,
@@ -83,7 +79,7 @@ fn sphere_collides(ray: &Ray, t_value: &mut f32, normal: &mut Vector3<f32>) -> b
     let udir: Unit<Vector3<f32>> = ray.unit_dir();
     let dir = udir.as_ref();
     let a = nalgebra::Vector3::dot(dir, dir);
-    
+
     let b = 2.0f32 * nalgebra::Vector3::dot(l, dir);
     let c = nalgebra::Vector3::dot(l, l) - 1.0f32;
 
