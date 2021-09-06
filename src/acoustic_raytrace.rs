@@ -123,8 +123,29 @@ fn get_node_from_mesh(mesh: &gltf::Mesh, buffers: &Vec<Data>) -> Result<SceneNod
                 .get();
             
             let parsed = json::Value::from_str(raw_val).unwrap();
-            let absorption_json_value = parsed.as_object().unwrap().get("absorption").unwrap();
-            let absorption_data: AbsorptionData = serde_json::from_value(absorption_json_value.to_owned()).unwrap();
+            let extras_object = parsed.as_object().unwrap();
+            let abs63 = &extras_object["abs63"];
+            let abs125 = &extras_object["abs125"];
+            let abs250 = &extras_object["abs250"];
+            let abs500 = &extras_object["abs500"];
+            let abs1000 = &extras_object["abs1000"];
+            let abs2000 = &extras_object["abs2000"];
+            let abs4000 = &extras_object["abs4000"];
+            let abs8000 = &extras_object["abs8000"];
+            let abs16000 = &extras_object["abs16000"];
+            let absorption_data: AbsorptionData = AbsorptionData::new(vec![
+                [63_f32, abs63.as_f64().unwrap_or(0.1_f64) as f32],
+                [125_f32, abs125.as_f64().unwrap_or(0.1_f64) as f32],
+                [250_f32, abs250.as_f64().unwrap_or(0.1_f64) as f32],
+                [500_f32, abs500.as_f64().unwrap_or(0.1_f64) as f32],
+                [1000_f32, abs1000.as_f64().unwrap_or(0.1_f64) as f32],
+                [2000_f32, abs2000.as_f64().unwrap_or(0.1_f64) as f32],
+                [4000_f32, abs4000.as_f64().unwrap_or(0.1_f64) as f32],
+                [8000_f32, abs8000.as_f64().unwrap_or(0.1_f64) as f32],
+                [16000_f32, abs16000.as_f64().unwrap_or(0.1_f64) as f32],
+            ]);
+
+            // let absorption_json_value = parsed.as_object().unwrap().get("absorption").unwrap();
             let acoustic_material = AcousticMaterial::from_absorption_data(absorption_data);
 
             mesh_node.acoustic_material = acoustic_material;
@@ -182,14 +203,31 @@ impl AcousticRaytracer {
                 continue
             }
 
-            match node_type.as_str() {
-                Some("source") => {
+            match node_type.as_u64() {
+                Some(1) => {
+                    println!("type is reflector");
+                    let mesh = match node.mesh() {
+                        Some(mesh) => mesh,
+                        None => continue
+                    };
+                    match get_node_from_mesh(&mesh, &buffers) {
+                        Ok(mesh_node) => {
+                            for child in mesh_node.children {
+                                root_node.add_child(child);
+                            }
+                        }
+                        Err(_) => {
+                            continue
+                        }
+                    }
+                },
+                Some(2) => {
                     println!("type is source");
                     let translation = node.transform().decomposed().0;
                     println!("{:?}", translation);
                     source = Some(point![translation[0], translation[1], translation[2]]);
                 },
-                Some("receiver") => {
+                Some(3) => {
                     println!("type is receiver");
                     let radius = &extras_object["radius"].as_f64().unwrap_or(0.5);
                     let mut receiver_node = SceneNode::new(rand::random::<u32>(), "receiver".to_string());
@@ -215,23 +253,6 @@ impl AcousticRaytracer {
                     //     }
                     // }
                 },
-                Some("reflector") => {
-                    println!("type is reflector");
-                    let mesh = match node.mesh() {
-                        Some(mesh) => mesh,
-                        None => continue
-                    };
-                    match get_node_from_mesh(&mesh, &buffers) {
-                        Ok(mesh_node) => {
-                            for child in mesh_node.children {
-                                root_node.add_child(child);
-                            }
-                        }
-                        Err(_) => {
-                            continue
-                        }
-                    }
-                },
                 Some(_) | None => {
                     println!("type is unknown");
                     continue
@@ -245,31 +266,27 @@ impl AcousticRaytracer {
 
     pub fn render(&mut self, file_name: String) -> Result<(), &str> {
         println!("Rendering");
+        let t0 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis();
+
         self.trace_rays();
-        // let time = SystemTime::now()
-        //     .duration_since(UNIX_EPOCH)
-        //     .expect("Time went backwards")
-        //     .as_millis();
-        // let mut path_parts: Vec<&str> = file_name.split("/").collect();
-        // let mut new_file_name = "".to_string();
-        // let prefixed = format!("{}-{}", time, path_parts.pop().unwrap());
-        // if path_parts.len() == 0 {
-        //     new_file_name = prefixed;
-        // } else {
-        //     for part in path_parts {
-        //         new_file_name = format!("{}/{}", new_file_name, part);
-        //     }
-        //     new_file_name = format!("{}/{}", new_file_name, prefixed);
-        // }
-    
-        // new_file_name = match new_file_name.strip_prefix("/") {
-        //     Some(val) => val.to_string(),
-        //     None => new_file_name
-        // };
+
+        let t1 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis();
+
         self.download_impulse_response(file_name);
-        // for i in 0..raytracer.ray_paths.len() {
-        //     println!("{}\n", raytracer.ray_paths[i])
-        // }
+
+        let t2 = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_millis();
+        println!("trace_rays                = {}", t1-t0);
+        println!("download_impulse_response = {}", t2-t1);
+        println!("render                    = {}", t2-t0);
         Ok(())
     }
 

@@ -6,12 +6,12 @@ fn main() {
     let gltf_file_name = if args.len() > 1 {
         args[1].clone()
     } else {
-        "res/gym.gltf".to_string()
+        "bench/auditorium/raya/auditorium.gltf".to_string()
     };
     let out_file_name = if args.len() > 2 {
         args[2].clone()
     } else {
-        "out/impulse-response.wav".to_string()
+        "bench/auditorium/raya/auditorium.wav".to_string()
     };
 
     match AcousticRaytracer::from_gltf(gltf_file_name.as_str()) {

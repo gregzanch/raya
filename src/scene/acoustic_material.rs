@@ -13,6 +13,12 @@ pub struct AcousticMaterial {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbsorptionData(Vec<[f32; 2]>);
 
+impl AbsorptionData {
+  pub fn new(absorption: Vec<[f32; 2]>) -> Self {
+    Self(absorption)
+  }
+}
+
 impl AcousticMaterial {
   pub fn new(absorption: Vec<f32>) -> Self {
       Self {
