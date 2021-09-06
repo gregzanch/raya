@@ -48,6 +48,9 @@
 # Audio
 *.wav      binary
 
+# Blender
+*.blend    binary
+
 # Scripts
 *.bash     text eol=lf
 *.fish     text eol=lf
