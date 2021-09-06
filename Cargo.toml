@@ -2,7 +2,7 @@
 authors = ["Greg Zanchelli <zanchelli.greg@gmail.com>"]
 edition = "2018"
 name = "raya"
-version = "0.1.0"
+version = "0.1.1"
 
 [[bin]]
 doc = false
@@ -22,3 +22,4 @@ scoped_threadpool = "0.1.*"
 serde =  { version = "1.0.126", features = ["derive"] }
 serde_json = "1.0.64"
 gltf = { version = "0.16", features = ["extras"] }
+clap = "2.33.3"
