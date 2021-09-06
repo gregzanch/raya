@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
 pub struct AcousticMaterial {
-  /// octave band absorption coefficients (63hz to 8000hz)
+  /// octave band absorption coefficients (63hz to 16000hz)
   absorption: Vec<f32>,
   frequencies: Vec<f32>,
 }
@@ -23,7 +23,7 @@ impl AcousticMaterial {
   pub fn new(absorption: Vec<f32>) -> Self {
       Self {
           absorption,
-          frequencies: octave(63.0, 8000.0)
+          frequencies: octave(63.0, 16000.0)
       }
   }
   pub fn from_absorption_data(data: AbsorptionData) -> Self {
@@ -65,8 +65,8 @@ impl AcousticMaterial {
 impl Default for AcousticMaterial {
   fn default() -> AcousticMaterial {
       AcousticMaterial {
-          absorption: vec![0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
-          frequencies: octave(63.0, 8000.0)
+          absorption: vec![0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01],
+          frequencies: octave(63.0, 16000.0)
       }
   }
 }

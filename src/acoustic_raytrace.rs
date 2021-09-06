@@ -26,6 +26,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const USE_RAYON: bool = true;
 const SPEED_OF_SOUND: f32 = 343.0;
+
+// Object types
+const REFLECTOR_TYPE: u64 = 1;
+const SOURCE_TYPE: u64 = 2;
+const RECEIVER_TYPE: u64 = 3;
+
 pub struct AcousticRaytracer {
     pub root_node: SceneNode,
 
@@ -204,8 +210,7 @@ impl AcousticRaytracer {
             }
 
             match node_type.as_u64() {
-                Some(1) => {
-                    println!("type is reflector");
+                Some(REFLECTOR_TYPE) => {
                     let mesh = match node.mesh() {
                         Some(mesh) => mesh,
                         None => continue
@@ -221,14 +226,12 @@ impl AcousticRaytracer {
                         }
                     }
                 },
-                Some(2) => {
-                    println!("type is source");
+                Some(SOURCE_TYPE) => {
                     let translation = node.transform().decomposed().0;
                     println!("{:?}", translation);
                     source = Some(point![translation[0], translation[1], translation[2]]);
                 },
-                Some(3) => {
-                    println!("type is receiver");
+                Some(RECEIVER_TYPE) => {
                     let radius = &extras_object["radius"].as_f64().unwrap_or(0.5);
                     let mut receiver_node = SceneNode::new(rand::random::<u32>(), "receiver".to_string());
                     receiver_node.primitive = Primitive::Sphere;
@@ -238,20 +241,6 @@ impl AcousticRaytracer {
                     receiver_node.translate(translation[0], translation[1], translation[2]);
                     receiver = Some(receiver_node.id);
                     root_node.add_child(receiver_node);
-                    // let mesh = match node.mesh() {
-                    //     Some(mesh) => mesh,
-                    //     None => continue
-                    // };
-                    // match get_node_from_mesh(&mesh, &buffers) {
-                    //     Ok(mesh_node) => {
-                    //         for child in mesh_node.children {
-
-                    //         }
-                    //     }
-                    //     Err(_) => {
-                    //         continue
-                    //     }
-                    // }
                 },
                 Some(_) | None => {
                     println!("type is unknown");
@@ -356,8 +345,8 @@ fn arrival_pressure(root_node: &SceneNode, initial_spl: &Vec<f32>, freqs: &Vec<f
         
         // multiply intensities by the frequency dependant reflection coefficient
         for index in 0..intensities.len() {
-            let r = if freqs[index] > 8000.0 {
-                1.0 - surface.acoustic_material.absorption_function(8000.0)
+            let r = if freqs[index] > 16000.0 {
+                1.0 - surface.acoustic_material.absorption_function(16000.0)
             } else {
                 1.0 - surface.acoustic_material.absorption_function(freqs[index])
             };
@@ -400,7 +389,7 @@ impl AcousticRaytracer {
 
     pub fn calculate_impulse_response(&mut self) -> Vec<f32> {
         let initial_spl = 100_f32; 
-        let frequencies = utils::bands::octave(63.0, 8000.0);
+        let frequencies = utils::bands::octave(63.0, 16000.0);
         let sample_rate = 44100_u32;
         
 
