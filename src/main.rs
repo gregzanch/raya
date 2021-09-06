@@ -20,15 +20,19 @@ fn main() {
             .help("The file path for the calculated impulse response (.wav)")
             .takes_value(true)
             .required(true))
+        .arg(Arg::with_name("single-thread")
+            .short("s")
+            .long("single-thread")
+            .help("Use a single thread"))
         .get_matches();
     
     let model = matches.value_of("model").unwrap();
     let output = matches.value_of("output").unwrap();
+    let single_thread = matches.is_present("single-thread");
     
-
     match AcousticRaytracer::from_gltf(model) {
         Ok(mut acoustic_raytracer) => {
-            acoustic_raytracer.render(output.to_string()).expect("There was a problem rendering the scene");
+            acoustic_raytracer.render(output.to_string(), !single_thread).expect("There was a problem rendering the scene");
         },
         Err(_) => {
             println!("There was a problem setting up the acoustic raytracer");

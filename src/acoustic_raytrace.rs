@@ -24,7 +24,6 @@ use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 
-const USE_RAYON: bool = true;
 const SPEED_OF_SOUND: f32 = 343.0;
 
 // Object types
@@ -250,13 +249,13 @@ impl AcousticRaytracer {
         Ok(acoustic_raytracer)
     }
 
-    pub fn render(&mut self, file_name: String) -> Result<(), &str> {
+    pub fn render(&mut self, file_name: String, parallel: bool) -> Result<(), &str> {
         let t0 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
             .as_millis();
 
-        self.trace_rays();
+        self.trace_rays(parallel);
 
         let t1 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -435,7 +434,7 @@ impl AcousticRaytracer {
         }
         signal
     }
-    pub fn trace_rays(&mut self){
+    pub fn trace_rays(&mut self, parallel: bool){
         let count = self.ray_count;
         let valid_ray_count = Arc::new(AtomicUsize::new(0));
         let t_pr = valid_ray_count.clone();
@@ -454,7 +453,7 @@ impl AcousticRaytracer {
             }
             progress_bar.finish_print(&completion_string);
         });
-        if USE_RAYON {
+        if parallel {
             while (valid_ray_count.load(Ordering::Relaxed) as u64) < count {
                 let valid_ray_paths: Vec<RayPath> = (0..count)
                     .into_par_iter()

@@ -20,11 +20,12 @@ This will build `raya` and output the binary to `target/release/raya`.
 
 ```txt
 USAGE:
-    raya --model <FILE> --output <FILE>
+    raya [FLAGS] --model <FILE> --output <FILE>
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+    -h, --help             Prints help information
+    -s, --single-thread    Use a single thread
+    -V, --version          Prints version information
 
 OPTIONS:
     -m, --model <FILE>     The 3d model file used (.gltf)
