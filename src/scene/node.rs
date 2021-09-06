@@ -48,25 +48,16 @@ impl SceneNode {
 
 
     pub fn scale(&mut self, x: f32, y: f32, z: f32) {
-        println!("Applying scaling to {} of ({}, {}, {})", self.name, x, y, z);
         self.apply_transform(Matrix4::new_nonuniform_scaling(&vector![x, y, z]));
     }
 
 
     pub fn translate(&mut self, x: f32, y: f32, z: f32) {
-        println!(
-            "Applying translation to {} of ({}, {}, {})",
-            self.name, x, y, z
-        );
         self.apply_transform(Matrix4::new_translation(&vector![x, y, z]));
     }
 
 
     pub fn rotate(&mut self, axis: &str, angle: f32) {
-        println!(
-            "Applying rotation to {} of ({}, {})",
-            self.name, axis, angle
-        );
         let axis = match axis {
             "x" | "X" => Vector3::x_axis(),
             "y" | "Y" => Vector3::y_axis(),

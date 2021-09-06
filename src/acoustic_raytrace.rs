@@ -228,7 +228,6 @@ impl AcousticRaytracer {
                 },
                 Some(SOURCE_TYPE) => {
                     let translation = node.transform().decomposed().0;
-                    println!("{:?}", translation);
                     source = Some(point![translation[0], translation[1], translation[2]]);
                 },
                 Some(RECEIVER_TYPE) => {
@@ -236,14 +235,12 @@ impl AcousticRaytracer {
                     let mut receiver_node = SceneNode::new(rand::random::<u32>(), "receiver".to_string());
                     receiver_node.primitive = Primitive::Sphere;
                     let translation = node.transform().decomposed().0;
-                    println!("{:?}", translation);
                     receiver_node.scale(*radius as f32, *radius as f32, *radius as f32);
                     receiver_node.translate(translation[0], translation[1], translation[2]);
                     receiver = Some(receiver_node.id);
                     root_node.add_child(receiver_node);
                 },
                 Some(_) | None => {
-                    println!("type is unknown");
                     continue
                 },
             }
@@ -254,7 +251,6 @@ impl AcousticRaytracer {
     }
 
     pub fn render(&mut self, file_name: String) -> Result<(), &str> {
-        println!("Rendering");
         let t0 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
@@ -398,12 +394,10 @@ impl AcousticRaytracer {
     
          // end time is latest time of arrival plus 0.1 seconds for safety
         let total_time = self.ray_paths[self.ray_paths.len() -1].get_total_time() + 0.05;
-        println!("total_time: {}", total_time);
         let spls = vec![initial_spl; frequencies.len()];
     
         // doubled the number of samples to mitigate the signal reversing
         let number_of_samples = (f32::floor(sample_rate as f32 * total_time) * 2.0) as u32;
-        println!("number_of_samples: {}", number_of_samples);
         let mut samples: Vec<Vec<f32>> = Vec::new();
         for _ in 0..frequencies.len() {
             samples.push(vec![0_f32; number_of_samples as usize]);
@@ -436,7 +430,6 @@ impl AcousticRaytracer {
                 }
             }
         }
-        println!("max: {}", max);
         for i in 0..signal.len() {
             signal[i] /= max;
         }
@@ -462,7 +455,6 @@ impl AcousticRaytracer {
             progress_bar.finish_print(&completion_string);
         });
         if USE_RAYON {
-            println!("USING RAYON");
             while (valid_ray_count.load(Ordering::Relaxed) as u64) < count {
                 let valid_ray_paths: Vec<RayPath> = (0..count)
                     .into_par_iter()

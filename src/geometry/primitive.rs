@@ -246,7 +246,6 @@ fn cylinder_collides(
             *normal = vector![intersection_point.x, 0.0f32, intersection_point.z];
             let u = normal.x.atan2(normal.z) / f32::consts::PI + 2.0; //atan2(n.x, n.z) / (2*pi) + 0.5;
             let v = intersection_point.y; //atan2(n.x, n.z) / (2*pi) + 0.5;
-                                          // println!("u: {}, v: {}", u, v);
             (*uv)[0] = u;
             (*uv)[1] = v;
         }
