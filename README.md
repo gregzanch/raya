@@ -2,6 +2,20 @@
 
 Raya is an acoustic raytracer written in rust.
 
+## Installation
+
+Follow this [guide](https://www.rust-lang.org/learn/get-started) if you don't have rust installed.
+
+### Building
+
+Build the project by running 
+
+```sh
+cargo build --release
+```
+
+This will build `raya` and output the binary to `target/release/raya`.
+
 ## Usage
 
 ```txt
@@ -20,7 +34,7 @@ OPTIONS:
 ### Examples
 
 ```sh
-raya -m bench/auditorium/raya/auditorium.gltf -o bench/auditorium/raya/auditorium.wav
+target/release/raya -m bench/auditorium/raya/auditorium.gltf -o bench/auditorium/raya/auditorium.wav
 ```
 
 ## Benchmarks
