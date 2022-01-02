@@ -2,6 +2,17 @@
 
 Raya is an acoustic raytracer written in rust.
 
+# Building
+
+To build raya, simply run:
+
+```sh
+cargo build --release
+```
+
+This will output the output binary to `target/release/raya`
+
+
 ## Usage
 
 ```txt
