@@ -35,7 +35,7 @@ pub fn aabb_collision(ray: &Ray, pos: &Vector3<f32>, size: &Vector3<f32>) -> Roo
 
     if (tmin > tymax) || (tymin > tmax) {
         if size.x == 1000.0f32 {
-            println!("1");
+            // println!("1");
         }
         return Roots::No([]);
     }
@@ -56,7 +56,7 @@ pub fn aabb_collision(ray: &Ray, pos: &Vector3<f32>, size: &Vector3<f32>) -> Roo
 
     if (tmin > tzmax) || (tzmin > tmax) {
         if size.x == 1000.0f32 {
-            println!("4");
+            // println!("4");
         }
         return Roots::No([]);
     }
@@ -70,17 +70,17 @@ pub fn aabb_collision(ray: &Ray, pos: &Vector3<f32>, size: &Vector3<f32>) -> Roo
     if tmin <= CUBE_EPS {
         if tmax <= CUBE_EPS {
             if size.x == 1000.0f32 {
-                println!("2");
+                // println!("2");
             }
             return Roots::No([]);
         }
         if size.x == 1000.0f32 {
-            println!("3");
+            // println!("3");
         }
         Roots::One([tmax])
     } else {
         if size.x == 1000.0f32 {
-            println!("5");
+            // println!("5");
         }
         Roots::Two([tmin, tmax])
     }
