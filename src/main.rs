@@ -3,7 +3,8 @@ use raya::AcousticRaytracer;
 use clap::{Arg, App, SubCommand};
 use std::io;
 use std::io::prelude::*;
-
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::process::{Command, Stdio};
 
 fn main() -> io::Result<()>{
     let matches = App::new("Raya")
@@ -64,6 +65,7 @@ fn main() -> io::Result<()>{
                 let output = sub_matches.value_of("output").unwrap();
                 let mut buffer: Vec<u8> = Vec::new();
                 let mut stdin = io::stdin(); // We get `Stdin` here.
+                
                 stdin.read_to_end(&mut buffer)?;
                 match AcousticRaytracer::from_gltf_io(&mut buffer) {
                     Ok(mut acoustic_raytracer) => {

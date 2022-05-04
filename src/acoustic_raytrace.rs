@@ -575,7 +575,7 @@ impl AcousticRaytracer {
             progress_bar.finish_print(&completion_string);
         });
         if USE_RAYON {
-            // println!("USING RAYON");
+            println!("USING RAYON");
             while (valid_ray_count.load(Ordering::Relaxed) as u64) < count {
                 let valid_ray_paths: Vec<RayPath> = (0..count)
                     .into_par_iter()
