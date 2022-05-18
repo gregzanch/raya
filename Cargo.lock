@@ -523,6 +523,7 @@ dependencies = [
  "scoped_threadpool",
  "serde",
  "serde_json",
+ "text_io",
 ]
 
 [[package]]
@@ -653,6 +654,12 @@ dependencies = [
  "quote",
  "unicode-xid",
 ]
+
+[[package]]
+name = "text_io"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "442f2674e6bd8489052b958e0eaebd89c26eefa3be9dc359d1e2ecccdc510f45"
 
 [[package]]
 name = "textwrap"

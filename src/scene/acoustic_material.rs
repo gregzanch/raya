@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone)]
 pub struct AcousticMaterial {
   /// octave band absorption coefficients (63hz to 8000hz)
-  absorption: Vec<f32>,
-  frequencies: Vec<f32>,
+  pub absorption: Vec<f32>,
+  pub frequencies: Vec<f32>,
 }
 
 
@@ -40,6 +40,11 @@ impl AcousticMaterial {
   }
   pub fn absorption_function(&self, frequency: f32) -> f32 {
     let mut i = 0;
+    for j in 0..self.frequencies.len() {
+      if self.frequencies[j] == frequency {
+        return self.absorption[j];
+      }
+    }
     while frequency > self.frequencies[i] && i < self.frequencies.len() {
       i+=1;
     }

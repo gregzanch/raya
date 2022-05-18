@@ -22,6 +22,9 @@ use std::str::FromStr;
 use gltf::mesh::util::ReadIndices;
 use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
+use serde_json::json;
+
+use crate::logger::{Phase};
 
 const USE_RAYON: bool = true;
 const SPEED_OF_SOUND: f32 = 343.0;
@@ -262,7 +265,7 @@ impl AcousticRaytracer {
         let acoustic_raytracer = AcousticRaytracer::new(root_node, source.expect("source is some"), receiver.expect("receiver is some"), max_order as u32, ray_count);
         Ok(acoustic_raytracer)
     }
-    pub fn from_gltf_io(buf: &mut Vec<u8>) -> Result<AcousticRaytracer, Box<dyn Error>> {
+    pub fn from_gltf_io(buf: &[u8]) -> Result<AcousticRaytracer, Box<dyn Error>> {
         let (gltf, buffers, _) = gltf::import_slice(buf)?;
         let mut root_node = SceneNode::new(rand::random::<u32>(), "noname".to_string());
         let mut source: Option<Point3<f32>> = None;
@@ -366,7 +369,7 @@ impl AcousticRaytracer {
             .expect("Time went backwards")
             .as_millis();
 
-        self.trace_rays();
+        self.trace_rays(false);
 
         let _t1 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -487,6 +490,7 @@ impl AcousticRaytracer {
             bits_per_sample: 16,
             sample_format: hound::SampleFormat::Int,
         };
+
         let mut writer = hound::WavWriter::create(path, spec).unwrap();
         for i in 0..impulse_response.len() {
             let amplitude = i16::MAX as f32;
@@ -499,8 +503,7 @@ impl AcousticRaytracer {
         let frequencies = utils::bands::octave(63.0, 8000.0);
         let sample_rate = 44100_u32;
         
-
-    
+        println!("{}", json!({ "phase": Phase::Processing, "progress": 0 }).to_string());
         self.ray_paths.sort_by(|a,b| a.distance.partial_cmp(&b.distance).unwrap());
     
          // end time is latest time of arrival plus 0.1 seconds for safety
@@ -515,7 +518,7 @@ impl AcousticRaytracer {
         for _ in 0..frequencies.len() {
             samples.push(vec![0_f32; number_of_samples as usize]);
         }
-      
+        println!("{}", json!({ "phase": Phase::Processing, "progress": 25 }).to_string());
         // add in raytracer paths 
         for i in 0..self.ray_paths.len() {
           let random_phase = if random() { 1.0 } else { -1.0 };
@@ -527,11 +530,12 @@ impl AcousticRaytracer {
               samples[f][rounded_sample] += p[f];
           }
         }
-        
+        println!("{}", json!({ "phase": Phase::Processing, "progress": 50 }).to_string());
         let filtered_samples = reconstruction_filter::filter_signals(samples);
+        println!("{}", json!({ "phase": Phase::Processing, "progress": 75 }).to_string());
         // let filtered_samples = samples;
     
-            // make the new signal's length half as long, we dont need the reversed part
+        // make the new signal's length half as long, we dont need the reversed part
         let mut signal: Vec<f32> = vec![0.0; filtered_samples[0].len() / 2];
         
         let mut max = 0.0;
@@ -547,37 +551,51 @@ impl AcousticRaytracer {
         for i in 0..signal.len() {
             signal[i] /= max;
         }
+        println!("{}", json!({ "phase": Phase::Processing, "progress": 100 }).to_string());
         signal
     }
-    pub fn trace_rays(&mut self){
-        println!("started raytracing");
-        let count = self.ray_count;
+    pub fn trace_rays(&mut self, io: bool){
+        if io {
+            println!("{}", json!({
+                "phase": Phase::Raytracing,
+                "progress": 0
+            }).to_string())
+        }
+        else {
+            println!("started raytracing");
+        }
+        let ray_count = self.ray_count;
         let valid_ray_count = Arc::new(AtomicUsize::new(0));
         let t_pr = valid_ray_count.clone();
-        let completion_string = format!("finished raytracing");
         let progress_thread = thread::spawn(move || {
-            let mut progress_bar = ProgressBar::new(count);
-            progress_bar.show_bar = false;
-            progress_bar.show_counter = true;
-            progress_bar.show_message = false;
-            progress_bar.show_percent = false;
-            progress_bar.show_speed = true;
-            progress_bar.show_tick = false;
-            progress_bar.show_time_left = true;
-            // progress_bar.tick_format("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏");
-            progress_bar.format("[▱▱ ]");
             let mut value = t_pr.load(Ordering::Relaxed);
-            while (value as u64) < count {
-                thread::sleep(Duration::from_millis(100));
-                progress_bar.set(value as u64);
-                value = t_pr.load(Ordering::Relaxed);
+            if io {
+                while (value as u64) < ray_count {
+                    println!("{}", json!({
+                        "phase": Phase::Raytracing,
+                        "progress": ((value as f32) / ray_count as f32) * 100f32,
+                    }).to_string());
+                    value = t_pr.load(Ordering::Relaxed);
+                    thread::sleep(Duration::from_millis(100));
+                }
+                println!("{}", json!({
+                    "phase": Phase::Raytracing,
+                    "progress": 100
+                }).to_string());
+            } else {
+                let mut progress_bar = ProgressBar::new(ray_count);
+                progress_bar.format("[▱▱ ]");
+                while (value as u64) < ray_count {
+                    thread::sleep(Duration::from_millis(100));
+                    progress_bar.set(value as u64);
+                    value = t_pr.load(Ordering::Relaxed);
+                }
+                progress_bar.finish_print("finished raytracing");
             }
-            progress_bar.finish_print(&completion_string);
         });
         if USE_RAYON {
-            println!("USING RAYON");
-            while (valid_ray_count.load(Ordering::Relaxed) as u64) < count {
-                let valid_ray_paths: Vec<RayPath> = (0..count)
+            while (valid_ray_count.load(Ordering::Relaxed) as u64) < ray_count {
+                let valid_ray_paths: Vec<RayPath> = (0..ray_count)
                     .into_par_iter()
                     .filter_map(|_| {
                         let rp = self.trace_ray();
@@ -593,8 +611,8 @@ impl AcousticRaytracer {
                 }
             }
         } else {
-            while (valid_ray_count.load(Ordering::Relaxed) as u64) < count {
-                let valid_ray_paths: Vec<RayPath> = (0..count)
+            while (valid_ray_count.load(Ordering::Relaxed) as u64) < ray_count {
+                let valid_ray_paths: Vec<RayPath> = (0..ray_count)
                     .into_iter()
                     .filter_map(|_| {
                         let rp = self.trace_ray();
