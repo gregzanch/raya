@@ -1,30 +1,30 @@
-use crate::geometry::{Ray, Primitive, Mesh};
-use crate::scene::{Intersect, SceneNode, NonRefIntersection, AcousticMaterial};
+use crate::geometry::{Mesh, Primitive, Ray};
 use crate::scene::acoustic_material::AbsorptionData;
+use crate::scene::{AcousticMaterial, Intersect, NonRefIntersection, SceneNode};
+use crate::signals::reconstruction_filter;
 use crate::utils;
-use nalgebra::{Point3, Vector3};
+use crate::utils::attenuation::air_attenuation;
+use crate::utils::convert::{i_2_p, lp_2_p, p_2_i, p_2_lp, lp_2_i, i_2_lp};
+use gltf::buffer::Data;
+use gltf::json;
+use gltf::mesh::util::ReadIndices;
+use hound;
 use nalgebra::{point, vector};
+use nalgebra::{Point3, Vector3};
 use pbr::ProgressBar;
-use rand::{Rng, random, thread_rng};
+use rand::{random, thread_rng, Rng};
 use rayon::prelude::*;
+use serde_json::json;
+use std::error::Error;
+use std::fmt;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use crate::utils::convert::{p_2_i, lp_2_p, p_2_lp, i_2_p};
-use crate::utils::attenuation::air_attenuation;
-use crate::signals::reconstruction_filter;
-use hound;
-use gltf::{json};
-use gltf::buffer::Data;
-use std::error::Error;
-use std::str::FromStr;
-use gltf::mesh::util::ReadIndices;
-use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde_json::json;
 
-use crate::logger::{Phase};
+use crate::logger::{Phase, Logger};
 
 const USE_RAYON: bool = true;
 const SPEED_OF_SOUND: f32 = 343.0;
@@ -47,14 +47,14 @@ impl Default for AcousticRaytracer {
         let mut receiver = SceneNode::new(1, "receiver".to_string());
         receiver.primitive = Primitive::Sphere;
         root.add_child(receiver);
-        point![0.0,0.0,0.0].coords[4];
+        point![0.0, 0.0, 0.0].coords[4];
         AcousticRaytracer {
             root_node: root,
             source: point![0.0, 0.0, 0.0],
             receiver: 1,
             ray_paths: Vec::new(),
             max_order: 100,
-            ray_count: 10000
+            ray_count: 10000,
         }
     }
 }
@@ -64,14 +64,14 @@ fn get_node_from_mesh(mesh: &gltf::Mesh, buffers: &Vec<Data>) -> Result<SceneNod
     let mut scene_node = SceneNode::new(rand::random::<u32>(), mesh_name.to_string());
     for primitive in mesh.primitives() {
         let primitive_index = primitive.index();
-        
+
         let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
 
         let mut vertices: Vec<Vector3<f32>> = vec![];
         for vert in reader.read_positions().expect("has positions") {
             let [x, y, z] = vert;
-            vertices.push(vector![x, y, z]);    
-        } 
+            vertices.push(vector![x, y, z]);
+        }
 
         let mut faces: Vec<[usize; 3]> = vec![];
         let mut face = [0_usize; 3];
@@ -80,33 +80,31 @@ fn get_node_from_mesh(mesh: &gltf::Mesh, buffers: &Vec<Data>) -> Result<SceneNod
             ReadIndices::U8(val) => {
                 for index in val {
                     face[i] = index as usize;
-                    i = (i+1) % 3;
+                    i = (i + 1) % 3;
                     if i == 0 {
                         faces.push(face.clone());
                     }
                 }
-            },
+            }
             ReadIndices::U16(val) => {
                 for index in val {
                     face[i] = index as usize;
-                    i = (i+1) % 3;
+                    i = (i + 1) % 3;
                     if i == 0 {
                         faces.push(face.clone());
                     }
                 }
-            },
+            }
             ReadIndices::U32(val) => {
                 for index in val {
                     face[i] = index as usize;
-                    i = (i+1) % 3;
+                    i = (i + 1) % 3;
                     if i == 0 {
                         faces.push(face.clone());
                     }
                 }
-            },
+            }
         }
-
-        
 
         let m = Mesh::new(vertices, faces);
 
@@ -123,7 +121,7 @@ fn get_node_from_mesh(mesh: &gltf::Mesh, buffers: &Vec<Data>) -> Result<SceneNod
                 .as_ref()
                 .expect("has extras")
                 .get();
-            
+
             let parsed = json::Value::from_str(raw_val).unwrap();
             let extras_object = parsed.as_object().unwrap();
             let abs63 = &extras_object["abs63"];
@@ -159,7 +157,13 @@ fn get_node_from_mesh(mesh: &gltf::Mesh, buffers: &Vec<Data>) -> Result<SceneNod
 }
 
 impl AcousticRaytracer {
-    pub fn new(root_node: SceneNode, source: Point3<f32>, receiver: u32, max_order: u32, ray_count: u64) -> Self {
+    pub fn new(
+        root_node: SceneNode,
+        source: Point3<f32>,
+        receiver: u32,
+        max_order: u32,
+        ray_count: u64,
+    ) -> Self {
         Self {
             root_node,
             source,
@@ -176,12 +180,8 @@ impl AcousticRaytracer {
         let mut receiver: Option<u32> = None;
 
         let scene = gltf.default_scene().expect("has default scene");
-        let scene_extras_str = scene
-            .extras()
-            .as_ref()
-            .expect("scene has extras")
-            .get();
-        
+        let scene_extras_str = scene.extras().as_ref().expect("scene has extras").get();
+
         let parsed_scene_extras = json::Value::from_str(scene_extras_str).unwrap();
         let scene_extras_object = parsed_scene_extras.as_object().unwrap();
         let max_order_value = scene_extras_object.get("max_order").unwrap();
@@ -190,19 +190,15 @@ impl AcousticRaytracer {
         let ray_count = ray_count_value.as_u64().unwrap_or(10000);
 
         for node in gltf.nodes() {
-            let node_extras_str = node
-                .extras()
-                .as_ref()
-                .expect("has extras")
-                .get();
-            
+            let node_extras_str = node.extras().as_ref().expect("has extras").get();
+
             let parsed = json::Value::from_str(node_extras_str).unwrap();
             let extras_object = parsed.as_object().unwrap();
             let node_type = &extras_object["node_type"];
             let active = &extras_object["active"];
 
             if active.as_u64().unwrap_or(0) == 0 {
-                continue
+                continue;
             }
 
             match node_type.as_u64() {
@@ -210,7 +206,7 @@ impl AcousticRaytracer {
                     // println!("type is reflector");
                     let mesh = match node.mesh() {
                         Some(mesh) => mesh,
-                        None => continue
+                        None => continue,
                     };
                     match get_node_from_mesh(&mesh, &buffers) {
                         Ok(mesh_node) => {
@@ -218,21 +214,20 @@ impl AcousticRaytracer {
                                 root_node.add_child(child);
                             }
                         }
-                        Err(_) => {
-                            continue
-                        }
+                        Err(_) => continue,
                     }
-                },
+                }
                 Some(2) => {
                     // println!("type is source");
                     let translation = node.transform().decomposed().0;
                     // println!("{:?}", translation);
                     source = Some(point![translation[0], translation[1], translation[2]]);
-                },
+                }
                 Some(3) => {
                     // println!("type is receiver");
                     let radius = &extras_object["radius"].as_f64().unwrap_or(0.5);
-                    let mut receiver_node = SceneNode::new(rand::random::<u32>(), "receiver".to_string());
+                    let mut receiver_node =
+                        SceneNode::new(rand::random::<u32>(), "receiver".to_string());
                     receiver_node.primitive = Primitive::Sphere;
                     let translation = node.transform().decomposed().0;
                     // println!("{:?}", translation);
@@ -254,15 +249,21 @@ impl AcousticRaytracer {
                     //         continue
                     //     }
                     // }
-                },
+                }
                 Some(_) | None => {
                     // println!("type is unknown");
-                    continue
-                },
+                    continue;
+                }
             }
         }
 
-        let acoustic_raytracer = AcousticRaytracer::new(root_node, source.expect("source is some"), receiver.expect("receiver is some"), max_order as u32, ray_count);
+        let acoustic_raytracer = AcousticRaytracer::new(
+            root_node,
+            source.expect("source is some"),
+            receiver.expect("receiver is some"),
+            max_order as u32,
+            ray_count,
+        );
         Ok(acoustic_raytracer)
     }
     pub fn from_gltf_io(buf: &[u8]) -> Result<AcousticRaytracer, Box<dyn Error>> {
@@ -272,12 +273,8 @@ impl AcousticRaytracer {
         let mut receiver: Option<u32> = None;
 
         let scene = gltf.default_scene().expect("has default scene");
-        let scene_extras_str = scene
-            .extras()
-            .as_ref()
-            .expect("scene has extras")
-            .get();
-        
+        let scene_extras_str = scene.extras().as_ref().expect("scene has extras").get();
+
         let parsed_scene_extras = json::Value::from_str(scene_extras_str).unwrap();
         let scene_extras_object = parsed_scene_extras.as_object().unwrap();
         let max_order_value = scene_extras_object.get("max_order").unwrap();
@@ -286,19 +283,15 @@ impl AcousticRaytracer {
         let ray_count = ray_count_value.as_u64().unwrap_or(10000);
 
         for node in gltf.nodes() {
-            let node_extras_str = node
-                .extras()
-                .as_ref()
-                .expect("has extras")
-                .get();
-            
+            let node_extras_str = node.extras().as_ref().expect("has extras").get();
+
             let parsed = json::Value::from_str(node_extras_str).unwrap();
             let extras_object = parsed.as_object().unwrap();
             let node_type = &extras_object["node_type"];
             let active = &extras_object["active"];
 
             if active.as_u64().unwrap_or(0) == 0 {
-                continue
+                continue;
             }
 
             match node_type.as_u64() {
@@ -306,7 +299,7 @@ impl AcousticRaytracer {
                     // println!("type is reflector");
                     let mesh = match node.mesh() {
                         Some(mesh) => mesh,
-                        None => continue
+                        None => continue,
                     };
                     match get_node_from_mesh(&mesh, &buffers) {
                         Ok(mesh_node) => {
@@ -314,21 +307,20 @@ impl AcousticRaytracer {
                                 root_node.add_child(child);
                             }
                         }
-                        Err(_) => {
-                            continue
-                        }
+                        Err(_) => continue,
                     }
-                },
+                }
                 Some(2) => {
                     // println!("type is source");
                     let translation = node.transform().decomposed().0;
                     // println!("{:?}", translation);
                     source = Some(point![translation[0], translation[1], translation[2]]);
-                },
+                }
                 Some(3) => {
                     // println!("type is receiver");
                     let radius = &extras_object["radius"].as_f64().unwrap_or(0.5);
-                    let mut receiver_node = SceneNode::new(rand::random::<u32>(), "receiver".to_string());
+                    let mut receiver_node =
+                        SceneNode::new(rand::random::<u32>(), "receiver".to_string());
                     receiver_node.primitive = Primitive::Sphere;
                     let translation = node.transform().decomposed().0;
                     // println!("{:?}", translation);
@@ -350,15 +342,21 @@ impl AcousticRaytracer {
                     //         continue
                     //     }
                     // }
-                },
+                }
                 Some(_) | None => {
                     // println!("type is unknown");
-                    continue
-                },
+                    continue;
+                }
             }
         }
 
-        let acoustic_raytracer = AcousticRaytracer::new(root_node, source.expect("source is some"), receiver.expect("receiver is some"), max_order as u32, ray_count);
+        let acoustic_raytracer = AcousticRaytracer::new(
+            root_node,
+            source.expect("source is some"),
+            receiver.expect("receiver is some"),
+            max_order as u32,
+            ray_count,
+        );
         Ok(acoustic_raytracer)
     }
 
@@ -387,9 +385,6 @@ impl AcousticRaytracer {
         // println!("render                    = {}", t2-t0);
         Ok(())
     }
-    
-
-
 }
 
 pub fn random_vector3() -> Vector3<f32> {
@@ -398,6 +393,14 @@ pub fn random_vector3() -> Vector3<f32> {
     let y: f32 = rng.gen();
     let z: f32 = rng.gen();
     vector![x - 0.5, y - 0.5, z - 0.5].normalize()
+}
+
+pub fn random_phase() -> f32 {
+    if random() {
+        1.0
+    } else {
+        -1.0
+    }
 }
 
 pub fn probability(prob: f32) -> bool {
@@ -412,10 +415,13 @@ pub struct RayPath {
     distance: f32,
 }
 
-
 impl fmt::Display for RayPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "src = ({:>5.1}, {:>5.1}, {:>5.1})\n", self.source.coords.x, self.source.coords.y, self.source.coords.z)?;
+        write!(
+            f,
+            "src = ({:>5.1}, {:>5.1}, {:>5.1})\n",
+            self.source.coords.x, self.source.coords.y, self.source.coords.z
+        )?;
         for i in 0..self.path.len() {
             write!(f, "{}\n", self.path[i])?;
         }
@@ -424,8 +430,6 @@ impl fmt::Display for RayPath {
     }
 }
 
-
-
 impl RayPath {
     pub fn get_total_distance(&self) -> f32 {
         let mut distance = 0_f32;
@@ -433,26 +437,41 @@ impl RayPath {
             if i == 0 {
                 distance += (self.path[i].point.coords - self.source.coords).magnitude();
             } else {
-                distance += (self.path[i].point.coords - self.path[i-1].point.coords).magnitude();
+                distance += (self.path[i].point.coords - self.path[i - 1].point.coords).magnitude();
             }
         }
         distance
     }
     pub fn get_total_time(&self) -> f32 {
-        self.get_total_distance() / SPEED_OF_SOUND
+        if self.distance > 0.0 {
+            self.distance / SPEED_OF_SOUND
+        } else {
+            self.get_total_distance() / SPEED_OF_SOUND
+        }
     }
 }
 
-fn arrival_pressure(root_node: &SceneNode, initial_spl: &Vec<f32>, freqs: &Vec<f32>, ray_path: &RayPath) -> Vec<f32> {
+fn arrival_pressure(
+    root_node: &SceneNode,
+    initial_spl: &Vec<f32>,
+    freqs: &Vec<f32>,
+    ray_path: &RayPath,
+) -> Vec<f32> {
 
-    let mut intensities = p_2_i(lp_2_p(initial_spl.to_vec()), 400.0);
+    // lp_2_p = lp.iter().map(|x| f32::powf(10.0, x / 20.0) * P_REF).collect()
+    // p_2_i = p.iter().map(|x| f32::powf(*x, 2.0 / z0)).collect()
+
+    let mut intensities: Vec<f32> = initial_spl.to_vec().into_iter().map(|spl| lp_2_i(spl)).collect();
+
+    // let mut intensities = p_2_i(lp_2_p(initial_spl.to_vec()), 400.0);
 
     // for each surface that the ray intersected
-    for i in 0..(ray_path.path.len()-1) {
-        
+    for i in 0..(ray_path.path.len() - 1) {
         // get the reflecting surface
-        let surface = root_node.find_child_by_id(ray_path.path[i].node).expect("node id exists in scene");
-        
+        let surface = root_node
+            .find_child_by_id(ray_path.path[i].node)
+            .expect("node id exists in scene");
+
         // multiply intensities by the frequency dependant reflection coefficient
         for index in 0..intensities.len() {
             let r = if freqs[index] > 8000.0 {
@@ -462,11 +481,11 @@ fn arrival_pressure(root_node: &SceneNode, initial_spl: &Vec<f32>, freqs: &Vec<f
             };
             intensities[index] = intensities[index] * r; // multiply the intensity by the reflection coefficient
         }
-
     }
 
-    // convert back to SPL 
-    let mut arrival_lp = p_2_lp(i_2_p(intensities, 400.0));
+    // convert back to SPL
+
+    let mut arrival_lp: Vec<f32> = intensities.iter().map(|i| i_2_lp(*i)).collect();
 
     // apply air absorption (dB/m)
     let air_attenuation_db = air_attenuation(&freqs, 20.0, 40.0, 101325.0);
@@ -479,9 +498,7 @@ fn arrival_pressure(root_node: &SceneNode, initial_spl: &Vec<f32>, freqs: &Vec<f
 }
 
 impl AcousticRaytracer {
-
     pub fn download_impulse_response(&mut self, path: String) {
-
         let impulse_response = self.calculate_impulse_response();
 
         let spec = hound::WavSpec {
@@ -494,47 +511,64 @@ impl AcousticRaytracer {
         let mut writer = hound::WavWriter::create(path, spec).unwrap();
         for i in 0..impulse_response.len() {
             let amplitude = i16::MAX as f32;
-            writer.write_sample((impulse_response[i] * amplitude) as i16).unwrap();
+            writer
+                .write_sample((impulse_response[i] * amplitude) as i16)
+                .unwrap();
         }
     }
 
     pub fn calculate_impulse_response(&mut self) -> Vec<f32> {
-        let initial_spl = 100_f32; 
+        // set up logging
+        let mut logger = Logger::new(Phase::Processing, true);
+        
+        let initial_spl = 100_f32;
         let frequencies = utils::bands::octave(63.0, 8000.0);
         let sample_rate = 44100_u32;
-        
-        println!("{}", json!({ "phase": Phase::Processing, "progress": 0 }).to_string());
-        self.ray_paths.sort_by(|a,b| a.distance.partial_cmp(&b.distance).unwrap());
-    
-         // end time is latest time of arrival plus 0.1 seconds for safety
-        let total_time = self.ray_paths[self.ray_paths.len() -1].get_total_time() + 0.05;
-        // println!("total_time: {}", total_time);
+        let n_paths = self.ray_paths.len();
+
+        self.ray_paths
+            .sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+
+        // end time is latest time of arrival plus 0.1 seconds for safety
+        let total_time = self.ray_paths[n_paths - 1].get_total_time() + 0.05;
         let spls = vec![initial_spl; frequencies.len()];
-    
+
         // doubled the number of samples to mitigate the signal reversing
         let number_of_samples = (f32::floor(sample_rate as f32 * total_time) * 2.0) as u32;
-        // println!("number_of_samples: {}", number_of_samples);
         let mut samples: Vec<Vec<f32>> = Vec::new();
         for _ in 0..frequencies.len() {
             samples.push(vec![0_f32; number_of_samples as usize]);
         }
-        println!("{}", json!({ "phase": Phase::Processing, "progress": 25 }).to_string());
-        // add in raytracer paths 
-        for i in 0..self.ray_paths.len() {
-          let random_phase = if random() { 1.0 } else { -1.0 };
-          let t = self.ray_paths[i].get_total_time();
-          let p: Vec<f32> = arrival_pressure(&self.root_node, &spls, &frequencies, &self.ray_paths[i]).iter().map(|x| x * random_phase).collect(); 
-          let rounded_sample = f32::floor(t * (sample_rate as f32)) as usize;
-    
-          for f in 0..frequencies.len() {
-              samples[f][rounded_sample] += p[f];
-          }
+
+        // ir calculation finished setting up
+        logger.update(25.0, true);
+
+        for i in 0..n_paths {
+            // log progress
+            let loop_progress = i as f32 / n_paths as f32;
+            let progress = 25.0 + loop_progress * 25.0;
+            if i % 10000 == 0 { logger.update(progress, true); }
+
+
+            let random_phase = random_phase();
+            let t = self.ray_paths[i].get_total_time();
+            let p: Vec<f32> =
+                arrival_pressure(&self.root_node, &spls, &frequencies, &self.ray_paths[i])
+                    .par_iter()
+                    .map(|x| x * random_phase)
+                    .collect();
+            let rounded_sample = f32::floor(t * (sample_rate as f32)) as usize;
+
+            for f in 0..frequencies.len() {
+                samples[f][rounded_sample] += p[f];
+            }
         }
-        println!("{}", json!({ "phase": Phase::Processing, "progress": 50 }).to_string());
+
+        logger.update(50.0, true);
         let filtered_samples = reconstruction_filter::filter_signals(samples);
-        println!("{}", json!({ "phase": Phase::Processing, "progress": 75 }).to_string());
+        logger.update(75.0, true);
         // let filtered_samples = samples;
-    
+        
         // make the new signal's length half as long, we dont need the reversed part
         let mut signal: Vec<f32> = vec![0.0; filtered_samples[0].len() / 2];
         
@@ -543,7 +577,7 @@ impl AcousticRaytracer {
             for j in 0..signal.len() {
                 signal[j] += filtered_samples[i][j];
                 if f32::abs(signal[j]) > max {
-                  max = f32::abs(signal[j]);
+                    max = f32::abs(signal[j]);
                 }
             }
         }
@@ -551,17 +585,21 @@ impl AcousticRaytracer {
         for i in 0..signal.len() {
             signal[i] /= max;
         }
-        println!("{}", json!({ "phase": Phase::Processing, "progress": 100 }).to_string());
+        logger.update(100.0, true);
+
         signal
     }
-    pub fn trace_rays(&mut self, io: bool){
+    pub fn trace_rays(&mut self, io: bool) {
         if io {
-            println!("{}", json!({
-                "phase": Phase::Raytracing,
-                "progress": 0
-            }).to_string())
-        }
-        else {
+            println!(
+                "{}",
+                json!({
+                    "phase": Phase::Raytracing,
+                    "progress": 0
+                })
+                .to_string()
+            )
+        } else {
             println!("started raytracing");
         }
         let ray_count = self.ray_count;
@@ -571,17 +609,25 @@ impl AcousticRaytracer {
             let mut value = t_pr.load(Ordering::Relaxed);
             if io {
                 while (value as u64) < ray_count {
-                    println!("{}", json!({
-                        "phase": Phase::Raytracing,
-                        "progress": ((value as f32) / ray_count as f32) * 100f32,
-                    }).to_string());
+                    println!(
+                        "{}",
+                        json!({
+                            "phase": Phase::Raytracing,
+                            "progress": ((value as f32) / ray_count as f32) * 100f32,
+                        })
+                        .to_string()
+                    );
                     value = t_pr.load(Ordering::Relaxed);
                     thread::sleep(Duration::from_millis(100));
                 }
-                println!("{}", json!({
-                    "phase": Phase::Raytracing,
-                    "progress": 100
-                }).to_string());
+                println!(
+                    "{}",
+                    json!({
+                        "phase": Phase::Raytracing,
+                        "progress": 100
+                    })
+                    .to_string()
+                );
             } else {
                 let mut progress_bar = ProgressBar::new(ray_count);
                 progress_bar.format("[▱▱ ]");
@@ -605,7 +651,8 @@ impl AcousticRaytracer {
                         } else {
                             None
                         }
-                    }).collect();
+                    })
+                    .collect();
                 for rp in valid_ray_paths.iter() {
                     self.ray_paths.push(rp.clone());
                 }
@@ -622,7 +669,8 @@ impl AcousticRaytracer {
                         } else {
                             None
                         }
-                    }).collect();
+                    })
+                    .collect();
                 for rp in valid_ray_paths.iter() {
                     self.ray_paths.push(rp.clone());
                 }
@@ -635,7 +683,7 @@ impl AcousticRaytracer {
         let mut ray_path = RayPath {
             source: self.source,
             path: Vec::new(),
-            distance: 0_f32
+            distance: 0_f32,
         };
 
         let mut ray = Ray::new(self.source, random_vector3());
@@ -649,10 +697,14 @@ impl AcousticRaytracer {
             // move the ray to the intersection point
             ray.src = intersection.point;
             // reflect the ray
-            ray.dir = ray.dir-(intersection.normal.scale(ray.dir.dot(&intersection.normal)).scale(2.0_f32));
+            ray.dir = ray.dir
+                - (intersection
+                    .normal
+                    .scale(ray.dir.dot(&intersection.normal))
+                    .scale(2.0_f32));
             ray.dir.normalize_mut();
             let scattering = 0.1;
-            
+
             if probability(scattering) {
                 ray.dir = random_vector3();
                 if intersection.normal.dot(&ray.dir) < 0.0 {

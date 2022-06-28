@@ -109,3 +109,13 @@ pub fn p_2_i(p: Vec<f32>, z0: f32) -> Vec<f32> {
 pub fn i_2_p(i: Vec<f32>, z0: f32) -> Vec<f32> {
   i.iter().map(|x| f32::sqrt(x * z0)).collect()
 }
+
+pub fn lp_2_i(lp: f32) -> f32 {
+  f32::powf(f32::powf(10.0, lp / 20.0) * P_REF, 0.005)
+}
+
+
+pub fn i_2_lp(i: f32) -> f32 {
+  20.0 * f32::log10(f32::sqrt(i * 400.0) / P_REF)
+}
+
